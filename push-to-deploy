@@ -1,0 +1,71 @@
+#!/bin/bash
+
+#commit_message="build(deploy): package-name"
+commit_message=$1
+
+SET_OUTPUT=$2
+GITHUB_OUTPUT=${GITHUB_OUTPUT:-/dev/null}
+GITHUB_ACTION_PATH=${GITHUB_ACTION_PATH:-./}
+
+if [[ -z "$commit_message" ]]; then
+  echo "monopublish - Error: commit message not specified."
+  exit 1;
+fi
+
+echo "monopublish - Commit message: "$commit_message
+echo "monopublish - Set output: "$SET_OUTPUT
+
+# Extract optional type message to locate "deploy" trigger keyword
+DEPLOY=`echo "$commit_message" | sed -rn 's/.*\((.*)\).*/\1/p'`
+
+# extract package name to deploy, using the folder name
+PACKAGE_NAME=`echo "$commit_message" | sed -rn 's/.*\(.*\):[ \t]*(.*)/\1/p'`
+
+if [[ -z "$PACKAGE_NAME" ]]; then
+  echo "monopublish - Error: PACKAGE_NAME not specified."
+  exit 1;
+fi
+
+echo "monopublish - DEPLOY="$DEPLOY
+echo "monopublish - PACKAGE_NAME=>$PACKAGE_NAME<"
+echo "monopublish - NPM_EXEC=$NPM_EXEC"
+
+# Pull @scope from package.json
+CWD=$PWD
+echo "monopublish - Current working directory: $CWD"
+echo "monopublish - Changing to packages/$PACKAGE_NAME directory..."
+cd packages/$PACKAGE_NAME
+echo "monopublish - Current working directory: $PWD"
+
+SCOPE=$(grep -ri "name" ./package.json --no-filename | awk '{print $2}' | sed -rn 's/\"(.*)\/.*/\1/p')
+cd $CWD
+
+# Build the scope argument for monopublish CLI tool
+echo "monopublish - Scope is: "$SCOPE
+if [[ -n "$SCOPE" ]]; then
+  SCOPE_ARG="-s $SCOPE"
+fi
+echo "monopublish - Scope argument: "$SCOPE_ARG
+
+echo "monopublish - Dry run is: "$DRY_RUN_ARG
+
+# Set a GITHUB_OUTPUT for the action if deploy trigger is present and --set-option is present
+if [[ "$DEPLOY" == "deploy" ]]; then
+  if [[ "$SET_OUTPUT" == "--set-output" ]]; then
+    echo "monopublish - GitHub Output file: "$GITHUB_OUTPUT
+    echo "should_deploy=true" >> $GITHUB_OUTPUT
+  fi
+fi
+
+# Only execute npm publish if deploy trigger is present
+# For any other npm run script, go ahead and execute it
+if [[ -n "$NPM_EXEC" ]]; then
+  if [[ "$DEPLOY" != "deploy" && "$NPM_EXEC" == "publish" ]]; then
+    echo "monopublish - Skip publishing since commit is not a deploy commit"
+    exit 0;
+  fi
+  echo "monopublish - execute: npm $NPM_EXEC"
+  echo "monopublish - $GITHUB_ACTION_PATH/monopublish $SCOPE_ARG -p $PACKAGE_NAME -n $DRY_RUN_ARG"
+  $GITHUB_ACTION_PATH/monopublish $SCOPE_ARG -p $PACKAGE_NAME -n $DRY_RUN_ARG
+fi
+ 

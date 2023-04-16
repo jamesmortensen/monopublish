@@ -1,0 +1,49 @@
+name: 'monopublish-action'
+description: 'This action helps publishing independent, logocally related packages in a monorepo which are not dependent on one another'
+author: 'James Mortensen'
+inputs:
+  check-if-deploy:
+    description: 'Check commit message for deploy trigger and package name and set a GITHUB_OUTPUT. (Default behavior if no npm-exec specified)'
+    required: false
+    default: false
+  npm-exec:
+    description: 'NPM run script to execute in the package. Also, can be test, install, and publish'
+    required: false
+  dry-run:
+    description: 'For dry runs. Go through the process but do not publish.'
+    required: false
+    default: false
+outputs:
+  should_deploy:
+    description: "True if we should run other steps/jobs prior to publishing"
+    value: ${{ steps.triggers.outputs.should_deploy }}
+runs:
+  using: 'composite'
+  steps:
+  - name: Get action triggers
+    shell: bash
+    id: triggers
+    env:
+      CHECK_IF_DEPLOY: ${{ inputs.check-if-deploy }}
+      DRY_RUN_INPUT: ${{ inputs.dry-run }}
+      NPM_EXEC: ${{ inputs.npm-exec }}
+    run: |
+      ls
+      pwd
+      if [[ "$DRY_RUN_INPUT" == "true" ]]; then
+        export DRY_RUN_ARG="-d"
+      fi
+      if [[ -z "$NPM_EXEC" ]]; then
+        CHECK_IF_DEPLOY=true
+      fi
+      if [[ "$CHECK_IF_DEPLOY" == "true" ]]; then
+        echo "monopublish - "$GITHUB_ACTION_PATH/push-to-deploy "`git log | head -5 | tail -1`" --set-output
+        $GITHUB_ACTION_PATH/push-to-deploy "`git log | head -5 | tail -1`" --set-output
+      fi
+      if [[ -n "$NPM_EXEC" ]]; then
+        $GITHUB_ACTION_PATH/push-to-deploy "`git log | head -5 | tail -1`"
+      fi
+  - name: Status
+    shell: bash
+    run: echo "monopublish - Should deploy:" ${{ steps.triggers.outputs.should-deploy }}
+    

@@ -1,0 +1,114 @@
+#!/bin/bash
+
+VERSION=0.0.1
+
+Version () {
+    echo "v$VERSION Copyright (c) James Mortensen, 2023 MIT License"
+    exit 1
+}
+
+Help () {
+    echo "Tool for publishing npm packages in a monorepo when the packages are independent of one another."
+    echo ""
+    echo "Usage:" 
+    echo "monopublish.sh [-p {package-name}|-b {semver}|-n|-s {scope}|-v|-h]"
+    echo ""
+    echo "    -h | --help        Help (this output)"
+    echo ""
+    echo "    -b {semver}        Specify major, minor, patch"
+    echo ""
+    echo "    -n                 Don't bump package version"
+    echo ""
+    echo "    -s {scope}         Specify scope"
+    echo ""
+    echo "    -p {package-name}  Package name"
+    echo ""
+    echo "    -e {npm-script}    Execute npm run script in that package only"
+    echo ""
+    echo "    -v | --version     Output version information"
+    echo ""
+    echo "Examples: "
+    echo ""
+    echo "Example publishing a patch version to a scoped package:"
+    echo "$ monopublish.sh -b patch -s @jamesmortensen -p sample-package -e publish"
+    echo ""
+    echo "Example publishing using the existing package.json version:"
+    echo "$ monopublish.sh -n -p sample-package -e publish"
+    echo ""
+    exit 1
+}
+
+# Defaults
+SEMVER_BUMP=minor
+NO_BUMP=false
+
+#string='build(deploy): environment-detector'
+while getopts ":ndhe:b:s:p:v" option; do
+   case $option in
+      n) # force overwrite
+         NO_BUMP=true;;
+      d) # dry run
+         DRY_RUN="--dry-run";;
+      h|help) # display Help
+         Help
+         exit;;
+      b)
+         SEMVER_BUMP=$OPTARG;;
+      e) # exec npm run script
+         NPM_EXEC=$OPTARG;;
+      s) # outputfile
+         SCOPE=$OPTARG;;
+      p) # ColorImageResolution
+         PACKAGE_NAME=$OPTARG;;
+      v) # display version
+         Version
+         exit;;
+     \?) # Invalid option
+         echo "monopublish - Error: Invalid option"
+         exit;;
+      :)
+         echo "monopublish - Error: $OPTARG requires an argument."
+         Help
+         exit;;
+   esac
+done
+shift $(($OPTIND + 1))
+
+echo "monopublish - Semver bump: "$SEMVER_BUMP
+echo "monopublish - Scope: "$SCOPE
+echo "monopublish - Package name: "$PACKAGE_NAME
+echo "monopublish - Don't bump version: "$NO_BUMP
+echo "monopublish - Dry run: "$DRY_RUN
+
+if [[ -z "$PACKAGE_NAME" ]]; then
+  echo "monopublish - Error: Required - Package name must be set with -p flag"
+  exit 1;
+fi
+
+echo "npm show $SCOPE/$PACKAGE_NAME version"
+
+CURRENT_VERSION=`npm show $SCOPE/$PACKAGE_NAME version --silent`
+if [[ -z "$CURRENT_VERSION" ]]; then
+  echo "monopublish - No package found. Use version in package.json"
+  NO_BUMP=true
+else
+  echo $CURRENT_VERSION
+fi
+
+echo "monopublish - Don't bump version: "$NO_BUMP
+pwd
+cd packages/$PACKAGE_NAME
+pwd
+
+if [[ "$NPM_EXEC" == "install" ]]; then
+  npm install
+elif [[ "$NPM_EXEC" == "test" ]]; then
+  npm test
+elif [[ "$NPM_EXEC" == "publish" ]]; then
+  npm publish $DRY_RUN
+elif [[ -n "$NPM_EXEC" ]]; then
+  npm run $NPM_EXEC
+else
+  echo "monopublish - No npm script specified."
+fi
+#npm publish $DRY_RUN

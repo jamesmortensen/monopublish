@@ -1,5 +1,5 @@
 name: 'monopublish-action'
-description: 'This action helps publishing independent, logocally related packages in a monorepo which are not dependent on one another'
+description: 'This action helps publishing independent, logically related packages in a monorepo which are not dependent on one another'
 author: 'James Mortensen'
 inputs:
   check-if-deploy:
@@ -27,7 +27,17 @@ runs:
       CHECK_IF_DEPLOY: ${{ inputs.check-if-deploy }}
       DRY_RUN_INPUT: ${{ inputs.dry-run }}
       NPM_EXEC: ${{ inputs.npm-exec }}
+      GH_RUN_ID: ${{ github.run_id }}
     run: |
+      # extract package name to deploy, using the folder name
+      PACKAGE_NAME=`echo "$commit_message" | sed -rn 's/.*\(.*\):[ \t]*(.*)/\1/p'`
+      echo "monopublish - PACKAGE_NAME=$PACKAGE_NAME"
+      if [[ -z "$PACKAGE_NAME" ]]; then
+        echo $PACKAGE_NAME not found. Cancelling workflow run $GH_RUN_ID...
+        gh run cancel $GH_RUN_ID
+        gh run watch $GH_RUN_ID
+        exit 0;
+      fi
       ls
       pwd
       if [[ "$DRY_RUN_INPUT" == "true" ]]; then

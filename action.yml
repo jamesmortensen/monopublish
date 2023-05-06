@@ -30,7 +30,7 @@ runs:
       GH_RUN_ID: ${{ github.run_id }}
     run: |
       # extract package name to deploy, using the folder name
-      PACKAGE_NAME=`echo "$commit_message" | sed -rn 's/.*\(.*\):[ \t]*(.*)/\1/p'`
+      PACKAGE_NAME=`echo "`git log | head -5 | tail -1`" | sed -rn 's/.*\(.*\):[ \t]*(.*)/\1/p'`
       echo "monopublish - PACKAGE_NAME=$PACKAGE_NAME"
       if [[ -z "$PACKAGE_NAME" ]]; then
         echo $PACKAGE_NAME not found. Cancelling workflow run $GH_RUN_ID...

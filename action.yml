@@ -30,7 +30,7 @@ runs:
       GH_RUN_ID: ${{ github.run_id }}
     run: |
       # extract package name to deploy, using the folder name
-      commit_message="`git log | head -5 | tail -1`"
+      commit_message="`git log -1 --pretty=format:"%s"`"
       echo "commit_message = "$commit_message
       PACKAGE_NAME=`echo "$commit_message" | sed -rn 's/.*\(.*\):[ \t]*(.*)/\1/p'`
       echo "monopublish - PACKAGE_NAME=$PACKAGE_NAME"
@@ -49,11 +49,11 @@ runs:
         CHECK_IF_DEPLOY=true
       fi
       if [[ "$CHECK_IF_DEPLOY" == "true" ]]; then
-        echo "monopublish - "$GITHUB_ACTION_PATH/push-to-deploy "`git log | head -5 | tail -1`" --set-output
-        $GITHUB_ACTION_PATH/push-to-deploy "`git log | head -5 | tail -1`" --set-output
+        echo "monopublish - "$GITHUB_ACTION_PATH/push-to-deploy "$commit_message" --set-output
+        $GITHUB_ACTION_PATH/push-to-deploy "$commit_message" --set-output
       fi
       if [[ -n "$NPM_EXEC" ]]; then
-        $GITHUB_ACTION_PATH/push-to-deploy "`git log | head -5 | tail -1`"
+        $GITHUB_ACTION_PATH/push-to-deploy "$commit_message"
       fi
   - name: Status
     shell: bash

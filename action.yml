@@ -31,6 +31,7 @@ runs:
     run: |
       # extract package name to deploy, using the folder name
       commit_message="`git log | head -5 | tail -1`"
+      echo "commit_message = "$commit_message
       PACKAGE_NAME=`echo "$commit_message" | sed -rn 's/.*\(.*\):[ \t]*(.*)/\1/p'`
       echo "monopublish - PACKAGE_NAME=$PACKAGE_NAME"
       if [[ -z "$PACKAGE_NAME" ]]; then
